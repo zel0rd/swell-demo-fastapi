@@ -1,0 +1,22 @@
+name: test
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+        cache: pip
+    - run: pip install -r requirements-dev.txt
+    - run: python -m pytest -q
+    - run: docker build -t demo:test .
+    - run: docker run -d --name demo --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges -p 127.0.0.1:8080:8080 -e APP_VERSION=ci-test demo:test
+    - run: python tests/smoke.py
+    - if: always()
+      run: docker logs demo || true
+    - if: always()
+      run: docker rm -f demo || true

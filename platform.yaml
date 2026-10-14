@@ -1,0 +1,20 @@
+# Reference only: swell does not ingest this file automatically yet.
+apiVersion: platform.example.com/v1
+kind: Application
+metadata:
+  name: swell-demo-fastapi
+build:
+  strategy: dockerfile
+  context: .
+  dockerfile: Dockerfile
+runtime:
+  type: web
+  port: 8080
+  cpu: 250m
+  memory: 256Mi
+  replicas: 1
+  health:
+    path: /health
+services:
+  postgres:
+    mode: none
