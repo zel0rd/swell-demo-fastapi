@@ -28,7 +28,7 @@ python -m pytest -q
 
 웹사이트: http://localhost:8080
 
-`.env.example`은 변수 참고용입니다. Python 실행은 .env 파일을 자동으로 읽지 않습니다. 셸에서 export하거나 Docker --env-file을 사용하세요.
+`env.example`은 변수 참고용입니다. Python 실행은 .env 파일을 자동으로 읽지 않습니다. 셸에서 export하거나 Docker --env-file을 사용하세요.
 `APP_NAME`, `APP_VERSION`, `DEMO_REGION`은 공개 표시용 값입니다. 여기에 비밀 값을 넣지 마세요. 기본 포트는 `8080`; 컨테이너는 런타임 `PORT`를 따릅니다.
 
 ## Docker 실행
@@ -106,3 +106,5 @@ curl --cacert /path/to/swell/.local/pki/ca.crt \
 GitHub Actions에서 pytest, non-root Docker 실행과 HTTP smoke test를 수행합니다. 클라우드 서비스나 registry로 이미지를 자동 배포하지 않습니다.
 
 MIT License.
+
+`swell` 소스 검사는 `.env*` 파일을 차단하므로 변수 예시는 `env.example`이라는 이름을 사용합니다.
