@@ -17,13 +17,15 @@ def test_page_health_and_assets():
 
 def test_metadata_is_runtime_and_allowlisted(monkeypatch):
     monkeypatch.setenv("APP_VERSION", "test-version")
+    monkeypatch.setenv("APP_COMMIT_SHA", "a" * 40)
     monkeypatch.setenv("DEMO_REGION", "test-region")
     monkeypatch.setenv("SECRET_SENTINEL", "must-not-leak")
     data = client.get("/api/info").json()
     assert data["version"] == "test-version"
+    assert data["sourceCommit"] == "a" * 40
     assert data["region"] == "test-region"
     assert "must-not-leak" not in str(data)
-    assert set(data) == {"name", "version", "region", "framework"}
+    assert set(data) == {"name", "version", "region", "framework", "sourceCommit"}
 
 
 def test_greeting_and_validation():

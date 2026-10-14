@@ -50,7 +50,7 @@ Snap으로 설치한 Docker에서는 `no-new-privileges`가 컨테이너 시작�
 ## swell에 Git 소스로 등록
 
 - 저장소: `https://github.com/zel0rd/swell-demo-fastapi.git`
-- 브랜치: `main` (실제 앱 사양에는 **40자리 commit SHA** 필요)
+- 브랜치: `main` (비워두면 `main`, 지정하면 해당 브랜치의 최신 커밋)
 - Dockerfile / build context: 루트의 `Dockerfile` / `.`
 - 포트: `8080`
 - 헬스체크: `/health`
@@ -60,12 +60,12 @@ Snap으로 설치한 Docker에서는 `no-new-privileges`가 컨테이너 시작�
 git rev-parse HEAD
 ```
 
-아래는 swell 앱 생성 요청의 `spec` 예시입니다. SHA를 실제 커밋으로 바꾸세요.
+아래는 swell 앱 생성 요청의 `spec` 예시입니다. 배포 요청마다 해당 브랜치의 최신 커밋을 조회하며, 동일 배포의 재시도는 조회한 커밋을 유지합니다.
 
 ```json
 {
   "gitUrl": "https://github.com/zel0rd/swell-demo-fastapi.git",
-  "commit": "REPLACE_WITH_FULL_40_CHARACTER_COMMIT_SHA",
+  "branch": "main",
   "port": 8080,
   "replicas": 1,
   "cpuMillis": 250,
@@ -86,7 +86,7 @@ docker push localhost:15000/swell-demo-fastapi:v1
 docker inspect localhost:15000/swell-demo-fastapi:v1 --format '{{index .RepoDigests 0}}'
 ```
 
-출력된 `localhost:15000/swell-demo-fastapi@sha256:...`를 대시보드 앱 생성의 **Image**에 입력합니다. 포트 `8080`, 헬스체크 `/health`, replicas `1`로 설정하고 배포하세요. 이미지 방식에서는 `gitUrl`/`commit`을 함께 입력하지 않습니다. 플랫폼 worker의 `TRUSTED_REGISTRIES`와 kind의 registry 접근은 swell README의 로컬 설정을 따라야 합니다.
+출력된 `localhost:15000/swell-demo-fastapi@sha256:...`를 대시보드 앱 생성의 **Image**에 입력합니다. 포트 `8080`, 헬스체크 `/health`, replicas `1`로 설정하고 배포하세요. 이미지 방식에서는 `gitUrl`/`branch`을 함께 입력하지 않습니다. 플랫폼 worker의 `TRUSTED_REGISTRIES`와 kind의 registry 접근은 swell README의 로컬 설정을 따라야 합니다.
 
 `localhost:15000`은 로컬 개발 예시입니다. 원격 환경에서는 노드에서 접근 가능한 registry를 사용하세요.
 
@@ -109,3 +109,5 @@ GitHub Actions에서 pytest, non-root Docker 실행과 HTTP smoke test를 수행
 MIT License.
 
 `swell` 소스 검사는 `.env*` 파일을 차단하므로 변수 예시는 `env.example`이라는 이름을 사용합니다.
+
+Git 배포 후 `/api/info`의 `sourceCommit`과 Swell 배포 기록의 커밋을 비교할 수 있습니다. Swell이 `SWELL_COMMIT_SHA` 빌드 인자를 전달하며, 직접 빌드할 때 생략하면 `unknown`입니다. Git push만으로 자동 배포되지는 않습니다. Swell에서 **배포**를 눌러 새 배포를 요청하세요.

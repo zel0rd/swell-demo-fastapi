@@ -38,7 +38,8 @@ def info():
     # Only these explicitly public demo fields are exposed, never the environment.
     return {"name": os.getenv("APP_NAME", "swell FastAPI demo"),
             "version": os.getenv("APP_VERSION", "1.0.0"),
-            "region": os.getenv("DEMO_REGION", "local"), "framework": "FastAPI"}
+            "region": os.getenv("DEMO_REGION", "local"), "framework": "FastAPI",
+            "sourceCommit": os.getenv("APP_COMMIT_SHA", "unknown")}
 
 
 @app.get("/api/hello")
