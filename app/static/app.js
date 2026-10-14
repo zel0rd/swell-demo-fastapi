@@ -1,21 +1,24 @@
-async function request(path, options = {}) {
-  const response = await fetch(path, {cache:'no-store', ...options});
-  if (!response.ok) throw new Error('요청 실패 (' + response.status + ')');
-  return response.json();
-}
-Promise.all([request('/health'), request('/api/info')]).then(([health, info]) => {
-  if (health.status !== 'ok') throw new Error('헬스체크 실패');
-  document.getElementById('status').textContent = '서버 응답 정상';
-  document.getElementById('version').textContent = info.version;
-  document.getElementById('region').textContent = info.region;
-}).catch(() => {document.getElementById('status').textContent = '연결 실패 · 새로고침해 주세요';});
-function bind(formId, resultId, action) {
-  document.getElementById(formId).addEventListener('submit', async event => {
-    event.preventDefault();const button=event.target.querySelector('button');button.disabled=true;
-    try {document.getElementById(resultId).textContent = await action();}
-    catch (error) {document.getElementById(resultId).textContent = error.message;}
-    finally {button.disabled=false;}
-  });
-}
-bind('greeting','response',async()=> (await request('/api/hello?name='+encodeURIComponent(document.getElementById('name').value))).message);
-bind('echo','echo-response',async()=> {const result=await request('/api/echo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:document.getElementById('message').value})});return result.message+' ('+result.length+'자)';});
+'use strict';
+const $=id=>document.getElementById(id);
+const key='pado-write-drafts-v1';
+const starter=[
+ {id:'begin',title:'새로운 시작에 관하여',text:'아침의 빛이 창문을 지나 책상 위로 내려앉았다.\n\n새로운 시작은 언제나 거창한 선언보다 작은 행동에서 비롯된다. 어제와 같은 커피를 내리고, 익숙한 의자에 앉고, 빈 페이지를 여는 일. 그 사소한 반복 속에서 우리는 조금 다른 내일을 만든다.\n\n오늘은 완벽한 문장을 쓰려 하지 않기로 했다. 떠오르는 생각을 붙잡고, 그 생각이 가리키는 방향으로 한 걸음 더 가 보기로 했다. 글은 생각의 흔적이고, 시작은 그 흔적을 남기는 일이다.\n\n그러니 일단 첫 문장을 적어 보자. 다음 문장은 그 뒤를 따라올 것이다.'},
+ {id:'ideas',title:'작은 아이디어 수첩',text:'좋은 아이디어는 어디에서 시작될까?\n\n관찰에서 시작되는 일들이 있다. 매일 지나치는 골목, 무심코 사용하는 버튼, 누군가의 짧은 질문. 당연하게 여기던 것을 다시 바라보면 새로운 가능성이 보인다.\n\n오늘 발견한 작은 질문을 여기에 기록해 보자.'},
+ {id:'weekly',title:'이번 주의 기록',text:'이번 주에 배운 것\n\n가장 기억에 남는 순간은 무엇이었나요? 작은 변화라도 좋습니다.\n\n다음 주에 시도하고 싶은 것\n\n거창한 계획 대신, 실제로 할 수 있는 한 가지를 적어 보세요.'}
+];
+let docs=starter.map(d=>({...d})),selected='begin',analysisController,saveTimer,toastTimer;
+try{const saved=JSON.parse(localStorage.getItem(key)||'null');if(Array.isArray(saved)&&saved.length){docs=saved.filter(d=>d&&typeof d.id==='string'&&typeof d.title==='string'&&typeof d.text==='string').slice(0,50).map(d=>({...d,title:d.title.slice(0,100),text:d.text.slice(0,20000)}));if(!docs.length)docs=starter.map(d=>({...d}));selected=docs[0].id;}}catch{}
+function notify(message){$('toast').textContent=message;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,3500);}
+function persist(){try{localStorage.setItem(key,JSON.stringify(docs));$('save-status').textContent='브라우저에 저장됨';}catch{$('save-status').textContent='저장할 수 없음';notify('브라우저 저장 공간을 사용할 수 없습니다. 내보내기로 글을 보관해 주세요.');}}
+function renderDocs(){const nav=$('documents');nav.replaceChildren();for(const d of docs){const b=document.createElement('button');b.type='button';b.className=d.id===selected?'active':'';b.setAttribute('aria-pressed',String(d.id===selected));const icon=document.createElement('span');icon.textContent='▤';const label=document.createElement('span');label.textContent=d.title||'제목 없는 글';b.append(icon,label);b.addEventListener('click',()=>select(d.id));nav.append(b);}$('doc-count').textContent=String(docs.length);}
+function resetAnalysis(){analysisController?.abort();for(const id of ['words','sentences','characters','reading'])$(id).textContent='—';$('keywords').replaceChildren();const s=document.createElement('span');s.className='keyword-empty';s.textContent='글의 중심에 있는 단어를 찾아보세요.';$('keywords').append(s);$('analysis-status').textContent='현재 글을 분석하려면 버튼을 눌러 주세요.';}
+function counts(){const text=$('text').value.trim();$('live-count').textContent=`${text?text.split(/\s+/u).length:0} 단어 · ${Array.from($('text').value).length.toLocaleString('ko-KR')}자`;}
+function select(id){clearTimeout(saveTimer);persist();const d=docs.find(d=>d.id===id);if(!d)return;selected=id;$('title').value=d.title;$('text').value=d.text;$('breadcrumb-title').textContent=d.title||'제목 없는 글';$('document-date').textContent=new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});renderDocs();counts();resetAnalysis();}
+function update(){const d=docs.find(d=>d.id===selected);d.title=$('title').value;d.text=$('text').value;$('breadcrumb-title').textContent=d.title||'제목 없는 글';renderDocs();counts();resetAnalysis();$('save-status').textContent='저장 중…';clearTimeout(saveTimer);saveTimer=setTimeout(persist,350);}
+$('title').addEventListener('input',update);$('text').addEventListener('input',update);
+$('new-doc').addEventListener('click',()=>{if(docs.length>=50){notify('최대 50개 문서를 보관할 수 있습니다.');return;}clearTimeout(saveTimer);const d={id:crypto.randomUUID(),title:'',text:''};docs.unshift(d);select(d.id);persist();$('title').focus();});
+$('focus').addEventListener('click',()=>{const active=document.body.classList.toggle('focus-mode');$('focus').setAttribute('aria-pressed',String(active));$('focus').textContent=active?'집중 모드 종료 ↙':'집중 모드 ↗';});
+$('download').addEventListener('click',()=>{const d=docs.find(d=>d.id===selected);const url=URL.createObjectURL(new Blob([d.title+'\n\n'+d.text],{type:'text/plain;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=(d.title||'제목 없는 글').replace(/[<>:"/\\|?*]/g,'_')+'.txt';a.click();URL.revokeObjectURL(url);notify('텍스트 파일을 다운로드했습니다.');});
+$('copy').addEventListener('click',async()=>{try{await navigator.clipboard.writeText($('text').value);notify('본문을 복사했습니다.');}catch{notify('복사 권한이 없습니다. 본문을 선택해 직접 복사해 주세요.');}});
+$('analyze').addEventListener('click',async()=>{const text=$('text').value;if(!text.trim()){notify('분석할 글을 먼저 작성해 주세요.');return;}analysisController?.abort();const controller=new AbortController();analysisController=controller;$('analyze').disabled=true;$('analysis-status').textContent='문장을 살펴보고 있습니다…';try{const response=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text}),signal:controller.signal});if(!response.ok)throw new Error('글 분석에 실패했습니다. 잠시 후 다시 시도해 주세요.');const d=await response.json();if(controller.signal.aborted)return;$('words').textContent=d.words.toLocaleString('ko-KR');$('sentences').textContent=d.sentences.toLocaleString('ko-KR');$('characters').textContent=d.characters_no_spaces.toLocaleString('ko-KR');$('reading').textContent=d.reading_seconds<60?d.reading_seconds+'초':Math.ceil(d.reading_seconds/60)+'분';$('keywords').replaceChildren();for(const word of d.keywords){const s=document.createElement('span');s.className='keyword';s.textContent=word.word+' · '+word.count;$('keywords').append(s);}$('analysis-status').textContent='분석 완료 · 읽기 시간은 분당 240단어 기준의 추정치입니다.';}catch(e){if(e.name!=='AbortError')$('analysis-status').textContent=e.message;}finally{$('analyze').disabled=false;}});
+select(selected);

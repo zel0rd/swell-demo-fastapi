@@ -18,7 +18,7 @@ with urllib.request.urlopen(base + "/api/info", timeout=3) as response:
     assert info["version"] == os.getenv("EXPECT_VERSION", "ci-test")
     assert info["framework"] == "FastAPI"
 with urllib.request.urlopen(base, timeout=3) as response:
-    assert "DEPLOYMENT PLAYGROUND" in response.read().decode()
+    assert "생각이 문장이 되는 곳" in response.read().decode()
 request = urllib.request.Request(base + "/api/echo", data=json.dumps({"message": "파도"}).encode(), headers={"Content-Type": "application/json"})
 with urllib.request.urlopen(request, timeout=3) as response:
     assert json.load(response) == {"message": "파도", "length": 2}
